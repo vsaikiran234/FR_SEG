@@ -1,28 +1,44 @@
 @echo off
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 
-:: Get arguments
-SET "CKPT=%~1"
-SET "INPUT=%~2"
-SET "OUTPUT=%~3"
+:: IMPORTANT: This batch file is designed to be run from WITHIN THE 'main' folder
+:: after ota-update.py has placed all files there.
 
-echo [*] Checkpoint   = %CKPT%
-echo [*] Input video  = %INPUT%
-echo [*] Output video = %OUTPUT%
+:: Define paths relative to the current directory (which is 'main' INSIDE THE CONTAINER)
+:: These are the paths where the files are expected to be after OTA updates them into 'main'.
+SET "CKPT=epoch.ckpt"
+SET "INPUT=trial.mp4"
+SET "OUTPUT=trial_output.mp4"
 
-:: Build Docker image if it doesn't exist
-docker image inspect segformer >nul 2>&1
-IF %ERRORLEVEL% NEQ 0 (
-    echo [*] Building Docker image 'segformer'...
-    docker build -t segformer .
-) ELSE (
-    echo [✓] Docker image 'segformer' already exists. Skipping build.
-)
+ECHO [*] Checkpoint   = %CKPT%
+ECHO [*] Input video  = %INPUT%
+ECHO [*] Output video = %OUTPUT%
 
-:: Run Docker container
-docker run --rm -it --gpus all ^
-  -v "%cd%":/home/segformer_docker/TEST_SEG_OTA ^
-  segformer python3 /home/segformer_docker/TEST_SEG_OTA/segformer_script.py ^
-  "/home/segformer_docker/TEST_SEG_OTA/%CKPT%" ^
-  "/home/segformer_docker/TEST_SEG_OTA/%INPUT%" ^
-  "/home/segformer_docker/TEST_SEG_OTA/%OUTPUT%"
+:: Clear previous build log, relative to current execution path (main)
+ECHO. > build_logs.txt
+
+(
+    :: Build Docker image if it doesn't exist or if Dockerfile has changed.
+    :: The Dockerfile is expected in the parent directory (one level up from 'main').
+    :: "%~dp0.." resolves to the full path of the parent directory (e.g., C:\segformer_docker\dataset\FR_SEG_OTA_2)
+    docker image inspect segformer >nul 2>&1
+    IF %ERRORLEVEL% NEQ 0 (
+        ECHO [*] Building Docker image 'segformer'...
+        :: Build context is the parent directory where the Dockerfile is located.
+        docker build -t segformer "%~dp0.."
+    ) ELSE (
+        ECHO [^✓] Docker image 'segformer' already exists. Skipping build.
+    )
+
+    :: Run Docker container
+    :: Mount the current directory (which is 'main') into /app inside the container.
+    :: "%~dp0" resolves to the full path of the current directory (e.g., C:\segformer_docker\dataset\FR_SEG_OTA_2\main\)
+    docker run --rm -it --gpus all ^
+      -v "%~dp0":/app ^
+      segformer python3 /app/segformer_script.py ^
+      "/app/%CKPT%" ^
+      "/app/%INPUT%" ^
+      "/app/%OUTPUT%"
+) >> build_logs.txt 2>&1
+
+ENDLOCAL
