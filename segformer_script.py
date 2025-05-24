@@ -40,22 +40,34 @@ def prediction_to_vis(prediction):
 def apply_segmentation_overlay(frame, model, feature_extractor):
     image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     encoded_inputs = feature_extractor(image, return_tensors="pt")
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    encoded_inputs = {k: v.to(device) for k, v in encoded_inputs.items()}
+
     with torch.no_grad():
         outputs = model(**encoded_inputs)
     logits = outputs.logits
+    
     predicted_mask = torch.argmax(logits, dim=1).cpu().numpy()[0]
     vis_mask = prediction_to_vis(predicted_mask).resize(image.size)
     vis_mask_np = np.array(vis_mask)
     return cv2.addWeighted(frame, 0.7, vis_mask_np, 0.3, 0)
 
 # --- Process video ---
-
-
 def process_video(input_video_path, output_video_path, model, feature_extractor, frame_size=(640, 480)):
     cap = cv2.VideoCapture(input_video_path)
+    if not cap.isOpened():
+        print(f"Error: Could not open input video {input_video_path}")
+        sys.exit(1)
+
     fps = cap.get(cv2.CAP_PROP_FPS)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
+    if not out.isOpened():
+        print(f"Error: Could not open output video {output_video_path}")
+        cap.release()
+        sys.exit(1)
 
     is_headless = os.environ.get("DISPLAY", "") == ""
 
@@ -70,12 +82,11 @@ def process_video(input_video_path, output_video_path, model, feature_extractor,
 
         overlay = apply_segmentation_overlay(frame, model, feature_extractor)
 
-        # FPS calculation
         end_time = time.time()
         frame_time = end_time - start_time
         frame_fps = 1.0 / frame_time if frame_time > 0 else 0.0
         frame_count += 1
-        print(f"[Frame {frame_count}] Current best FPS: {frame_fps:.2f}")
+        print(f"[Frame {frame_count}] FPS: {frame_fps:.2f}")
 
         if not is_headless:
             cv2.imshow("Segmentation Output", overlay)
@@ -111,4 +122,3 @@ if __name__ == "__main__":
     feature_extractor.do_reduce_labels = False
 
     process_video(input_video_path, output_video_path, model, feature_extractor)
-
