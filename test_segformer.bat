@@ -1,6 +1,5 @@
 @echo off
-SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPA
-NSION
+SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 
 :: IMPORTANT: This batch file is designed to be run from WITHIN THE 'main' folder
 :: after ota-update.py has placed all files there.
@@ -20,7 +19,6 @@ ECHO. > build_logs.txt
 (
     :: Determine the base directory where Dockerfile is located (one level up from 'main')
     FOR %%A IN ("%~dp0.") DO SET "BASE_DIR_FOR_DOCKERFILE=%%~dpA"
-    ECHO [*] Dockerfile Base Dir: %BASE_DIR_FOR_DOCKERFILE%
 
     :: Build Docker image if it doesn't exist or if Dockerfile has changed.
     docker image inspect segformer >nul 2>&1
@@ -35,10 +33,6 @@ ECHO. > build_logs.txt
     SET "CKPT_PATH_IN_CONTAINER=/app/%CKPT_FILENAME%"
     SET "INPUT_PATH_IN_CONTAINER=/app/%INPUT_FILENAME%"
     SET "OUTPUT_PATH_IN_CONTAINER=/app/%OUTPUT_FILENAME%"
-
-    ECHO [*] Checkpoint Path in Container: %CKPT_PATH_IN_CONTAINER%
-    ECHO [*] Input Path in Container: %INPUT_PATH_IN_CONTAINER%
-    ECHO [*] Output Path in Container: %OUTPUT_PATH_IN_CONTAINER%
 
     :: Run Docker container - ALL ON ONE LINE TO AVOID LINE CONTINUATION ISSUES
     docker run --rm -it --gpus all -v "%~dp0":/app segformer python3 /app/segformer_script.py "%CKPT_PATH_IN_CONTAINER%" "%INPUT_PATH_IN_CONTAINER%" "%OUTPUT_PATH_IN_CONTAINER%"
