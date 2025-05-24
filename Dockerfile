@@ -15,5 +15,4 @@ RUN apt-get update && apt-get install -y \
 RUN pip install torch torchvision torchaudio
 RUN pip install opencv-python pillow transformers
 
-# Download weights (optional: for debugging)
 RUN python3 -c "from transformers import SegformerFeatureExtractor; SegformerFeatureExtractor.from_pretrained('nvidia/segformer-b0-finetuned-ade-512-512')"
