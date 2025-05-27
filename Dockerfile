@@ -8,9 +8,18 @@ FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0+PTX"
 ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
 ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Add NVIDIA CUDA repository GPG key
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg2 curl ca-certificates && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub | apt-key add - && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    apt-get purge --autoremove -y curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install required system packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libglib2.0-0 \
     libsm6 \
@@ -18,15 +27,20 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libgl1-mesa-dev \
     ffmpeg \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip install --no-cache-dir \
-    torch torchvision torchaudio \
-    opencv-python pillow transformers
+    torch==1.11.0 \
+    torchvision==0.12.0 \
+    torchaudio==0.11.0 \
+    opencv-python \
+    pillow \
+    transformers==4.18.0
 
 # Pre-download Segformer feature extractor weights
-RUN python3 -c "from transformers import SegformerFeatureExtractor; SegformerFeatureExtractor.from_pretrained('nvidia/segformer-b0-finetuned-ade-512-512')"
+RUN python3 -m pip install --no-cache-dir requests datasets && \
+    python3 -c "from transformers import SegformerFeatureExtractor; SegformerFeatureExtractor.from_pretrained('nvidia/segformer-b0-finetuned-ade-512-512')"
 
 # Set working directory
 WORKDIR /home/segformer_docker/TEST_SEG_OTA
