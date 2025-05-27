@@ -10,11 +10,12 @@ ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
 ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Add NVIDIA CUDA repository GPG key
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Remove existing NVIDIA repository sources to avoid conflicts
+RUN rm -f /etc/apt/sources.list.d/cuda* /etc/apt/sources.list.d/nvidia* && \
+    apt-get update && apt-get install -y --no-install-recommends \
     gnupg2 curl ca-certificates && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub | apt-key add - && \
-    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub | gpg --dearmor -o /usr/share/keyrings/nvidia-cuda-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
     apt-get purge --autoremove -y curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
