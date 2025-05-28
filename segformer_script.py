@@ -75,7 +75,7 @@ def process_video(input_video_path, output_video_path, model, feature_extractor,
         frame_time = end_time - start_time
         frame_fps = 1.0 / frame_time if frame_time > 0 else 0.0
         frame_count += 1
-        print(f"[Frame {frame_count}] CURRENT RATE FPS: {frame_fps:.2f}")
+        print(f"[Frame {frame_count}] FPS: {frame_fps:.2f}")
 
         if not is_headless:
             cv2.imshow("Segmentation Output", overlay)
